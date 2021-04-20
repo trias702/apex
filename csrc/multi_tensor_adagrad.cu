@@ -10,6 +10,7 @@
 #include "multi_tensor_apply.cuh"
 #include "type_shim.h"
 
+#define _ENABLE_EXTENDED_ALIGNED_STORAGE
 #define BLOCK_SIZE 1024
 #define ILP 4
 

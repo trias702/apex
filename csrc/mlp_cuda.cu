@@ -433,7 +433,7 @@ CLEANUP:
 // Bias ADD. Assume input X is [features x batch size], column major.
 // Bias is one 'features' long vector, with implicit broadcast.
 template <typename T>
-__global__ void biasAdd_fprop(T *X, T *b, uint batch_size, uint features) {
+__global__ void biasAdd_fprop(T *X, T *b, unsigned int batch_size, unsigned int features) {
   T r_x[ILP];
   T r_b[ILP];
   if(is_aligned(X) && is_aligned(b) && features % ILP ==0) {
@@ -480,7 +480,7 @@ __global__ void biasAdd_fprop(T *X, T *b, uint batch_size, uint features) {
 // Bias ADD + ReLU. Assume input X is [features x batch size], column major.
 // Activation support fuesed ReLU. Safe to call in-place.
 template <typename T>
-__global__ void biasAddRelu_fprop(T *X, T *b, uint batch_size, uint features) {
+__global__ void biasAddRelu_fprop(T *X, T *b, unsigned int batch_size, unsigned int features) {
   T r_x[ILP];
   T r_b[ILP];
   if(is_aligned(X) && is_aligned(b) && features % ILP ==0) {
@@ -527,7 +527,7 @@ __global__ void biasAddRelu_fprop(T *X, T *b, uint batch_size, uint features) {
 // ReLU. Assume input X is [features x batch size], column major.
 // Safe to call in-place.
 template <typename T>
-__global__ void Relu_fprop(T *X, uint batch_size, uint features) {
+__global__ void Relu_fprop(T *X, unsigned int batch_size, unsigned int features) {
   T r_x[ILP];
   if(is_aligned(X) && features % ILP ==0) {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -567,7 +567,7 @@ __global__ void Relu_fprop(T *X, uint batch_size, uint features) {
 // Sigmoid. Assume input X is [features x batch size], column major.
 // Safe to call in-place.
 template <typename T>
-__global__ void Sigmoid_fprop(T *X, uint batch_size, uint features) {
+__global__ void Sigmoid_fprop(T *X, unsigned int batch_size, unsigned int features) {
   T r_x[ILP];
   if(is_aligned(X) && features % ILP ==0) {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -607,7 +607,7 @@ __global__ void Sigmoid_fprop(T *X, uint batch_size, uint features) {
 // ReLU. Assume input X is [features x batch size], column major.
 // Safe to call in-place.
 template <typename T>
-__global__ void Relu_bprop(T *dY, T *Y, uint batch_size, uint features, T *dX) {
+__global__ void Relu_bprop(T *dY, T *Y, unsigned int batch_size, unsigned int features, T *dX) {
   T r_dy[ILP];
   T r_y[ILP];
   if(is_aligned(dY) &&
@@ -655,7 +655,7 @@ __global__ void Relu_bprop(T *dY, T *Y, uint batch_size, uint features, T *dX) {
 // Sigmoid. Assume input X is [features x batch size], column major.
 // Safe to call in-place.
 template <typename T>
-__global__ void Sigmoid_bprop(T *dY, T *Y, uint batch_size, uint features, T *dX) {
+__global__ void Sigmoid_bprop(T *dY, T *Y, unsigned int batch_size, unsigned int features, T *dX) {
   T r_dy[ILP];
   T r_y[ILP];
   if(is_aligned(dY) &&
@@ -1321,7 +1321,7 @@ int mlp_fp(
         return 1;
       }
 
-      const uint &input_size = ofeat;
+      const unsigned int &input_size = ofeat;
       int num_blocks = 0;
       int num_SMs = at::cuda::getCurrentDeviceProperties()->multiProcessorCount;
       // Call biasReLU
