@@ -208,6 +208,7 @@ if "--cuda_ext" in sys.argv:
             CUDAExtension(name='mlp_cuda',
                           sources=['csrc/mlp.cpp',
                                    'csrc/mlp_cuda.cu'],
+                          libraries=['cublas', 'cublasLt'],
                           extra_compile_args={'cxx': ['-O3'] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE'],
                                               'nvcc':['-O3'] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE']}))
 
