@@ -1,6 +1,7 @@
 import types
 import torch
 from .sparse_masklib import create_mask
+from .permutation_lib import Permutation
 
 torchvision_imported=True
 try:
@@ -8,6 +9,11 @@ try:
 except ImportError:
     print("[ASP][Warning] torchvision cannot be imported.")
     torchvision_imported=False
+
+import json
+import os
+import string
+import time
 
 def eligible_modules(model, whitelist_layer_types, allowed_layer_names, disallowed_layer_names):
     eligible_modules_list = []
@@ -18,19 +24,25 @@ def eligible_modules(model, whitelist_layer_types, allowed_layer_names, disallow
             eligible_modules_list.append((name, mod))
     return eligible_modules_list
 
+
 class ASP:
     __model = None
     __verbosity = 0
     __optimizer = None
     __sparse_parameters = []
     __calculate_mask = None
+    __allow_permutation = True
+    __all_parameters = []
+    __save_permutation_graph = False
+    __permutation_output_dir = ''
 
     @classmethod
     def init_model_for_pruning(cls, model, mask_calculator="m4n2_1d",
              verbosity=3,
-             whitelist=[torch.nn.Linear, torch.nn.Conv1d, torch.nn.Conv2d, torch.nn.Conv3d], 
+             whitelist=[torch.nn.Linear, torch.nn.Conv1d, torch.nn.Conv2d, torch.nn.Conv3d, torch.nn.MultiheadAttention], 
              allowed_layer_names=None, disallowed_layer_names=[],
-             allow_recompute_mask=False, custom_layer_dict={}):
+             allow_recompute_mask=False, custom_layer_dict={},
+             allow_permutation=True):
         """Call this method to modify your model to take advantage of sparse matrix multiplication.
         Note that this call alone only augments the model with additional buffers needed for sparse MMA,
         it does not enable use of sparse MMA. 
@@ -63,12 +75,14 @@ class ASP:
           allow_recompute_mask     If True, stores pruned values so that dense weights can be restored.
                                    Pruned weights are stored in CPU memory, hence this option does not increase GPU memory usage.
           custom_layer_dict        Dictionary of additional layer paremeters to sparsify. e.g. {CustomLinear: ['weight']}
+          allow_permutation        If True, allow the input channel permutation to ease the influence of weight pruning.
           
-          [Future] Support for allow_recompute_mask can be removed, it is not part of sparse inference recipe -- AKM. 
+          [Future] Support for allow_recompute_mask can be removed, it is not part of sparse inference recipe.
         """
         assert (cls.__model is None), "ASP has been initialized already."
         cls.__model = model
         cls.__verbosity = verbosity
+        cls.__allow_permutation = allow_permutation
 
         if isinstance(mask_calculator, str):
             def create_mask_from_pattern(param):
@@ -81,15 +95,22 @@ class ASP:
         # idea is that you will add one of these functions for each module type that can be sparsified.
         if torchvision_imported:
             print("[ASP] torchvision is imported, can work with the MaskRCNN/KeypointRCNN from torchvision.")
-            sparse_parameter_list = {torch.nn.Linear: ['weight'], torch.nn.Conv1d: ['weight'], torch.nn.Conv2d: ['weight'], torch.nn.Conv3d: ['weight'], torchvision.ops.misc.Conv2d: ['weight']}
+            torchvision_version = str(torchvision.__version__)
+            torchvision_version_major = int(torchvision_version.split('.')[0])
+            torchvision_version_minor = int(torchvision_version.split('.')[1])
+            if torchvision_version_major == 0 and torchvision_version_minor < 12:
+                sparse_parameter_list = {torch.nn.Linear: ['weight'], torch.nn.Conv1d: ['weight'], torch.nn.Conv2d: ['weight'], torch.nn.Conv3d: ['weight'], torch.nn.modules.linear.NonDynamicallyQuantizableLinear: ['weight'], torch.nn.MultiheadAttention: ['q_proj_weight', 'k_proj_weight', 'v_proj_weight', 'in_proj_weight'], torchvision.ops.misc.Conv2d: ['weight']}
+            else:    # Torchvision remove APIs that were deprecated before 0.8 (#5386) in 0.12.0, torchvision.ops.misc.Conv2d is removed
+                sparse_parameter_list = {torch.nn.Linear: ['weight'], torch.nn.Conv1d: ['weight'], torch.nn.Conv2d: ['weight'], torch.nn.Conv3d: ['weight'], torch.nn.modules.linear.NonDynamicallyQuantizableLinear: ['weight'], torch.nn.MultiheadAttention: ['q_proj_weight', 'k_proj_weight', 'v_proj_weight', 'in_proj_weight']}
         else:
-            sparse_parameter_list = {torch.nn.Linear: ['weight'], torch.nn.Conv1d: ['weight'], torch.nn.Conv2d: ['weight'], torch.nn.Conv3d: ['weight']}
+            sparse_parameter_list = {torch.nn.Linear: ['weight'], torch.nn.Conv1d: ['weight'], torch.nn.Conv2d: ['weight'], torch.nn.Conv3d: ['weight'], torch.nn.modules.linear.NonDynamicallyQuantizableLinear: ['weight'], torch.nn.MultiheadAttention: ['q_proj_weight', 'k_proj_weight', 'v_proj_weight', 'in_proj_weight']}
         if custom_layer_dict: # Update default list to include user supplied custom (layer type : parameter tensor), make sure this tensor type is something ASP knows how to prune
             sparse_parameter_list.update(custom_layer_dict)
             whitelist += list(custom_layer_dict.keys())
 
         for module_type in whitelist:
             assert (module_type in sparse_parameter_list), "Module %s :: Don't know how to sparsify module." % module.dtype()
+
 
         # find all sparse modules, extract sparse parameters and decorate
         def add_sparse_attributes(module_name, module):
@@ -122,6 +143,43 @@ class ASP:
 
         for name, sparse_module in eligible_modules(model, tuple(whitelist), allowed_layer_names, disallowed_layer_names):
             add_sparse_attributes(name, sparse_module)
+
+        if allow_permutation:    # find all named modules, extract parameters and decorate, used for offline permutation in K dim
+            for module_name, module in model.named_modules():
+                module_type_str = str(type(module)).split("\'")[1]
+                if module_type_str == 'torch.nn.modules.container.Sequential' or module_type_str.startswith('torchvision.models'):
+                    # filter out the 'torch.nn.modules.container.Sequential' type and the whole model, like 'torchvision.models.vgg.VGG'
+                    continue
+                for p_name, p in module.named_parameters():
+                    cls.__all_parameters.append((module_name, module, p_name, p))
+                if module_type_str == 'torch.nn.modules.batchnorm.BatchNorm2d':
+                # need to get the running_mean and running_var from model.state_dict(), as they are not the learnable parameters
+                    module_mean_name = module_name + '.running_mean'
+                    module_var_name = module_name + '.running_var'
+                    for param_key in model.state_dict():
+                        if module_mean_name == param_key or module_var_name == param_key:
+                            cls.__all_parameters.append((module_name, module, param_key.split(".")[-1], model.state_dict()[param_key]))
+            # add the __permutation_output_dir field to save the intermediate results for permutation
+            cls.__permutation_output_dir = '.'
+            # Set the corresponding params from ASP class to the Permutation class
+            permutation_verbosity = 5
+            Permutation.set_permutation_params_from_asp(cls.__model, cls.__sparse_parameters, cls.__all_parameters, permutation_verbosity)
+            # Set the identical random seed for all GPUs to make sure the same results generated in permutation search
+            Permutation.set_identical_seed()
+
+
+    @classmethod
+    def already_init_asp_model(cls):
+        """Call this method to check whether ASP has been initialized already.
+        """
+        if cls.__model is None:
+            if cls.__verbosity >= 3:
+                print("[ASP] ASP has not been initialized.")
+                return False
+        else:
+            if cls.__verbosity >= 3:
+                print("[ASP] ASP has been initialized already.")
+                return True
 
     @classmethod
     def init_optimizer_for_pruning(cls, optimizer):
@@ -157,6 +215,28 @@ class ASP:
         If init(...) was called with allow_recompute_mask=False AND sparsity is disabled, pruned field can be None.
         """
         with torch.no_grad():
+            if cls.__allow_permutation:
+                # Step 1: use the Torch.FX library to build the graph
+                # Step 2: permutation search with the customized kernel
+                # The simplest without user intervention:
+                # A. try to import with the distributed mode of the original model
+                # B. if meet the error, import with the none-distributed mode of the original model
+                start_time_permute = time.perf_counter()
+                successful_permutation = False
+                try:
+                    successful_permutation = Permutation.permute_model(cls.__model.module, dump_fx_graph=cls.__save_permutation_graph, save_dumped_fx_graph=os.path.join(cls.__permutation_output_dir, 'model_offline_permutation_graph.json'))
+                    if successful_permutation:
+                        print("\n[compute_sparse_masks] permuted the (distributed) model.")
+                except AttributeError:
+                    successful_permutation = Permutation.permute_model(cls.__model, dump_fx_graph=cls.__save_permutation_graph, save_dumped_fx_graph=os.path.join(cls.__permutation_output_dir, 'model_offline_permutation_graph.json'))
+                    if successful_permutation:
+                        print("\n[compute_sparse_masks] permuted the model.")
+
+                if successful_permutation:
+                    duration_build_offline_permutation_graph = time.perf_counter() - start_time_permute
+                    print("[compute_sparse_masks] Take {:.4f} seconds to find and apply permutations.".format(duration_build_offline_permutation_graph))
+
+
             for module_name, module, p_name, p, mask, pruned in cls.__sparse_parameters:
                 if mask.sum() < mask.numel(): # when recalculating masks
                     # restore dense parameter if allow_recompute_mask is enabled
@@ -170,7 +250,7 @@ class ASP:
 
                 p.mul_(mask) # in-place multiplication, so pruned weights are 0-values, hence checkpoint will have 0s for pruned weights
                 if cls.__verbosity >= 2:
-                    print("[ASP] Enabled %.2f%% sparsity for %s::%s of size=%s and type=%s" % (100.0*mask.sum()/mask.numel(), module_name, p_name, str(p.size()), str(p.dtype)))
+                    print("[ASP] Enabled %.2f%% sparsity for %s::%s of size=%s and type=%s with magnitude %s" % (100.0-100.0*mask.sum()/mask.numel(), module_name, p_name, str(p.size()), str(p.dtype), torch.sum(torch.abs(p))))
 
     @classmethod
     def restore_pruned_weights(cls):
@@ -211,7 +291,21 @@ class ASP:
     @classmethod
     def prune_trained_model(cls, model, optimizer):
         # add mask buffers to model (init_model_for_pruning), augment optimizer (init_optimizer_for_pruning) and compute masks (compute_sparse_masks)
-        cls.init_model_for_pruning(model, mask_calculator="m4n2_1d", verbosity=2, whitelist=[torch.nn.Linear, torch.nn.Conv2d], allow_recompute_mask=False)
+        cls.init_model_for_pruning(model, mask_calculator="m4n2_1d", verbosity=2, whitelist=[torch.nn.Linear, torch.nn.Conv2d, torch.nn.MultiheadAttention], allow_recompute_mask=False)
         cls.init_optimizer_for_pruning(optimizer)
         cls.compute_sparse_masks()
+
+    @classmethod
+    def set_permutation_saving_params(cls, allow_permutation=True, save_permutation_graph=False, permutation_output_dir='.'):
+        """This function is used to set the permutation saving related parameters in ASP class and inside of the Permutation class."""
+        print("\n[ASP][set_permutation_saving_param] Set permutation saving related parameters")
+        print("\n[set_permutation_saving_param] Set permutation saving related parameters")
+        cls.__allow_permutation = allow_permutation
+        print("[set_permutation_saving_param]\t Allow permutation: {}".format(cls.__allow_permutation))
+        cls.__save_permutation_graph = save_permutation_graph
+        print("[set_permutation_saving_param]\t Save permutation graphs: {}".format(cls.__save_permutation_graph))
+        cls.__permutation_output_dir = permutation_output_dir
+        print("[set_permutation_saving_param]\t Permutation graphs saving dir: {}".format(cls.__permutation_output_dir))
+
+        Permutation.set_permutation_saving_params(allow_permutation, save_permutation_graph, permutation_output_dir)
 

@@ -13,8 +13,8 @@
 
 
 // TODO:  Kernel arg size limit may be <4KB for some other cards (ie Jetson)
-constexpr int depth_to_max_tensors[5] = {110, 64, 48, 36, 30};
-constexpr int depth_to_max_blocks[5] = {320, 320, 320, 320, 320};
+constexpr int depth_to_max_tensors[6] = {110, 64, 48, 36, 30, 24};
+constexpr int depth_to_max_blocks[6] = {320, 320, 320, 320, 320, 320};
 
 template<int n> struct TensorListMetadata
 {
@@ -60,7 +60,7 @@ void multi_tensor_apply(
       // TODO:  Print which tensor fails.
       bool contiguous_memory = tensor_lists[l][t].is_contiguous();
 #ifdef VERSION_GE_1_5
-      contiguous_memory = (contiguous_memory || tensor_lists[l][t].is_contiguous(at::MemoryFormat::ChannelsLast));
+      contiguous_memory = (contiguous_memory || tensor_lists[l][t].is_contiguous(at::MemoryFormat::ChannelsLast) || tensor_lists[l][t].is_contiguous(at::MemoryFormat::ChannelsLast3d));
 #endif
       TORCH_CHECK(contiguous_memory, "A tensor was not contiguous.");
       TORCH_CHECK(tensor_lists[l][t].device() == ref_device, "A tensor was not on the same device as the first tensor");
