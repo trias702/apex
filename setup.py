@@ -239,6 +239,7 @@ if "--cuda_ext" in sys.argv:
         CUDAExtension(
             name="fused_dense_cuda",
             sources=["csrc/fused_dense.cpp", "csrc/fused_dense_cuda.cu"],
+            libraries=['cublas'],
             extra_compile_args={
                 "cxx": ["-O3"] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE'],
                 "nvcc": ["-O3"] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE'],
@@ -347,6 +348,7 @@ if "--cuda_ext" in sys.argv:
                     "csrc/megatron/fused_weight_gradient_dense_cuda.cu",
                     "csrc/megatron/fused_weight_gradient_dense_16bit_prec_cuda.cu",
                 ],
+                libraries=['cublas'],
                 extra_compile_args={
                     "cxx": ["-O3"] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE'],
                     "nvcc": [
