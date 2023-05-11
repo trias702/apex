@@ -107,7 +107,7 @@ DEVICE_FUNCTION void ldg(int (&dst)[1], const uint16_t *gmem) {
 
 DEVICE_FUNCTION void ldg_stream(int (&dst)[1], const uint16_t *gmem) {
     unsigned int tmp;
-    asm volatile ("ld.global.cs.nc.s32 %0, [%1];"  : "=r"(tmp) : "l" ((const uint *)gmem));
+    asm volatile ("ld.global.cs.nc.s32 %0, [%1];"  : "=r"(tmp) : "l" ((const unsigned int *)gmem));
     dst[0] = tmp;
 }
 
@@ -158,7 +158,7 @@ DEVICE_FUNCTION void stg(uint16_t *gmem, int (&src)[1]) {
 DEVICE_FUNCTION void stg_stream(uint16_t *gmem, int (&src)[1]) {
     unsigned int tmp = src[0];
     asm volatile ("st.global.cs.s32 [%0], %1;"
-        :: "l"((uint *)gmem) , "r"(tmp));
+        :: "l"((unsigned int *)gmem) , "r"(tmp));
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -171,7 +171,7 @@ DEVICE_FUNCTION void stg(uint16_t *gmem, int (&src)[2]) {
 
 DEVICE_FUNCTION void stg_stream(uint16_t *gmem, int (&src)[2]) {
     asm volatile ("st.global.cs.v2.s32 [%0], {%1,%2};"
-        :: "l"((uint *)gmem) , "r"(src[0]), "r"( src[1]));
+        :: "l"((unsigned int *)gmem) , "r"(src[0]), "r"( src[1]));
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

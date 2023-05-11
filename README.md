@@ -145,9 +145,12 @@ A Python-only build omits:
 
 
 ### [Experimental] Windows
-`pip install -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" .` may work if you were able to build Pytorch from source
-on your system. A Python-only build via `pip install -v --no-cache-dir .` is more likely to work.  
-If you installed Pytorch in a Conda environment, make sure to install Apex in that same environment.
+- Install VSTools/MSBuild 2017 or 2019 or 2022
+- Open VS Tools Prompt and navigate to apex github directory
+- Run the following:
+
+`set DISTUTILS_USE_SDK=1`
+`pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" --global-option="--distributed_adam" --global-option="--permutation_search" --global-option="--bnp" --global-option="--xentropy" --global-option="--focal_loss" --global-option="--index_mul_2d" --global-option="--deprecated_fused_adam" --global-option="--fast_layer_norm" --global-option="--fmha" --global-option="--fast_multihead_attn" --global-option="--transducer" --global-option="--cudnn_gbn" --global-option="--fused_conv_bias_relu" ./`
 
 
 ## Custom C++/CUDA Extensions and Install Options

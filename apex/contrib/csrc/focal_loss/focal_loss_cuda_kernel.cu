@@ -94,7 +94,7 @@ __global__ void focal_loss_forward_cuda_kernel(
         coeff_b2 = sigma;
       }
 
-      accscalar_t coeff_f = coeff_f1 * ::pow(coeff_f2, gamma);
+      accscalar_t coeff_f = coeff_f1 * ::pow(static_cast<accscalar_t>(coeff_f2), static_cast<accscalar_t>(gamma));
       accscalar_t coeff_b = coeff_b1 * coeff_b2;
 
       accscalar_t loss_t = coeff_f * (base + off_a);

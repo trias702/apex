@@ -308,16 +308,16 @@ void index_mul_2d_float_foward_cuda(at::Tensor &out,
     cudaStream_t stream = at::cuda::getCurrentCUDAStream();
     
     if (fea_dim == 64) {
-        const int BLOCK_THREADS_DIMX = 16;
-        const int BLOCK_THREADS_DIMY = 16;
+        unsigned int BLOCK_THREADS_DIMX = 16;
+        unsigned int BLOCK_THREADS_DIMY = 16;
         const int BLOCK_NUMS = (size + BLOCK_THREADS_DIMY - 1) / BLOCK_THREADS_DIMY;
 
         index_mul_2d_float_dim64<<<BLOCK_NUMS, {BLOCK_THREADS_DIMX, BLOCK_THREADS_DIMY, 1}, 0, stream>>>(
             out.data_ptr<float>(), in1.data_ptr<float>(), in2.data_ptr<float>(), 
             idx1.data_ptr<int64_t>(), size);
     } else {
-        const int BLOCK_THREADS_DIMX = 32;
-        const int BLOCK_THREADS_DIMY = 8;
+        unsigned int BLOCK_THREADS_DIMX = 32;
+        unsigned int BLOCK_THREADS_DIMY = 8;
         const int BLOCK_NUMS = (size + BLOCK_THREADS_DIMY - 1) / BLOCK_THREADS_DIMY;
 
         index_mul_2d_float<<<BLOCK_NUMS, {BLOCK_THREADS_DIMX, BLOCK_THREADS_DIMY, 1}, 0, stream>>>(            
@@ -343,8 +343,8 @@ void index_mul_2d_float_backward_cuda(at::Tensor &grad_in1,
     cudaStream_t stream = at::cuda::getCurrentCUDAStream();
 
     if (fea_dim == 64) {
-        const int BLOCK_THREADS_DIMX = 16;
-        const int BLOCK_THREADS_DIMY = 16;
+        unsigned int BLOCK_THREADS_DIMX = 16;
+        unsigned int BLOCK_THREADS_DIMY = 16;
         const int BLOCK_NUMS = (size + BLOCK_THREADS_DIMY - 1) / BLOCK_THREADS_DIMY;
 
         index_mul_2d_grad_float_dim64<<<BLOCK_NUMS, {BLOCK_THREADS_DIMX, BLOCK_THREADS_DIMY, 1}, 0, stream>>>(
@@ -353,8 +353,8 @@ void index_mul_2d_float_backward_cuda(at::Tensor &grad_in1,
 
         AT_CUDA_CHECK(cudaGetLastError());
     } else {
-        const int BLOCK_THREADS_DIMX = 32;
-        const int BLOCK_THREADS_DIMY = 8;
+        unsigned int BLOCK_THREADS_DIMX = 32;
+        unsigned int BLOCK_THREADS_DIMY = 8;
         const int BLOCK_NUMS = (size + BLOCK_THREADS_DIMY - 1) / BLOCK_THREADS_DIMY;
 
         index_mul_2d_grad_float<<<BLOCK_NUMS, {BLOCK_THREADS_DIMX, BLOCK_THREADS_DIMY, 1}, 0, stream>>>(
@@ -381,8 +381,8 @@ void index_mul_2d_float_backward_backward_cuda(at::Tensor &grad_grad_out,
     cudaStream_t stream = at::cuda::getCurrentCUDAStream();
 
     if (fea_dim == 64) {
-        const int BLOCK_THREADS_DIMX = 16;
-        const int BLOCK_THREADS_DIMY = 16;
+        unsigned int BLOCK_THREADS_DIMX = 16;
+        unsigned int BLOCK_THREADS_DIMY = 16;
         const int BLOCK_NUMS = (size + BLOCK_THREADS_DIMY - 1) / BLOCK_THREADS_DIMY;
 
         index_mul_2d_grad_grad_float_dim64<<<BLOCK_NUMS, {BLOCK_THREADS_DIMX, BLOCK_THREADS_DIMY, 1}, 0, stream>>>(
@@ -390,8 +390,8 @@ void index_mul_2d_float_backward_backward_cuda(at::Tensor &grad_grad_out,
             grad_out.data_ptr<float>(), grad_grad_in1.data_ptr<float>(), grad_grad_in2.data_ptr<float>(), 
             in1.data_ptr<float>(), in2.data_ptr<float>(), idx1.data_ptr<int64_t>(), size);
     } else {
-        const int BLOCK_THREADS_DIMX = 32;
-        const int BLOCK_THREADS_DIMY = 8;
+        unsigned int BLOCK_THREADS_DIMX = 32;
+        unsigned int BLOCK_THREADS_DIMY = 8;
         const int BLOCK_NUMS = (size + BLOCK_THREADS_DIMY - 1) / BLOCK_THREADS_DIMY;       
 
         index_mul_2d_grad_grad_float<<<BLOCK_NUMS, {BLOCK_THREADS_DIMX, BLOCK_THREADS_DIMY, 1}, 0, stream>>>(
@@ -415,8 +415,8 @@ void index_mul_2d_half_foward_cuda(at::Tensor &out,
 
     cudaStream_t stream = at::cuda::getCurrentCUDAStream();
     
-    const int BLOCK_THREADS_DIMX = 32;
-    const int BLOCK_THREADS_DIMY = 8;
+    unsigned int BLOCK_THREADS_DIMX = 32;
+    unsigned int BLOCK_THREADS_DIMY = 8;
     const int BLOCK_NUMS = (size + BLOCK_THREADS_DIMY - 1) / BLOCK_THREADS_DIMY;
 
     index_mul_2d_half<<<BLOCK_NUMS, {BLOCK_THREADS_DIMX, BLOCK_THREADS_DIMY, 1}, 0, stream>>>(            
@@ -440,8 +440,8 @@ void index_mul_2d_half_backward_cuda(at::Tensor &grad_in1,
 
     cudaStream_t stream = at::cuda::getCurrentCUDAStream();
 
-    const int BLOCK_THREADS_DIMX = 32;
-    const int BLOCK_THREADS_DIMY = 8;
+    unsigned int BLOCK_THREADS_DIMX = 32;
+    unsigned int BLOCK_THREADS_DIMY = 8;
     const int BLOCK_NUMS = (size + BLOCK_THREADS_DIMY - 1) / BLOCK_THREADS_DIMY;
 
     index_mul_2d_grad_half<<<BLOCK_NUMS, {BLOCK_THREADS_DIMX, BLOCK_THREADS_DIMY, 1}, 0, stream>>>(
@@ -466,8 +466,8 @@ void index_mul_2d_half_backward_backward_cuda(at::Tensor &grad_grad_out,
 
     cudaStream_t stream = at::cuda::getCurrentCUDAStream();
 
-    const int BLOCK_THREADS_DIMX = 32;
-    const int BLOCK_THREADS_DIMY = 8;
+    unsigned int BLOCK_THREADS_DIMX = 32;
+    unsigned int BLOCK_THREADS_DIMY = 8;
     const int BLOCK_NUMS = (size + BLOCK_THREADS_DIMY - 1) / BLOCK_THREADS_DIMY;       
 
     index_mul_2d_grad_grad_half<<<BLOCK_NUMS, {BLOCK_THREADS_DIMX, BLOCK_THREADS_DIMY, 1}, 0, stream>>>(

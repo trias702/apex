@@ -486,7 +486,7 @@ __global__ void strided_check_finite_cuda_kernel(
 
     for (int j = i; j < tsize; j+=totThreads) {
         GRAD_T pi = p_copy[j];
-        if (!isfinite(pi)) {
+        if (!isfinite(static_cast<float>(pi))) {
             *noop_gmem = 1;
         }
     }
@@ -516,7 +516,7 @@ __global__ void strided_check_finite_cuda_kernel(
     for (int j = i; j < tsize; j+=totThreads) {
         at::Half pi;
         convert(p_copy[j], pi);
-        if (!isfinite(pi)) {
+        if (!isfinite(static_cast<float>(pi))) {
             *noop_gmem = 1;
         }
     }

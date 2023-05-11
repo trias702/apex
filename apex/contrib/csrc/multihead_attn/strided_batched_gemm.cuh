@@ -556,7 +556,7 @@ void HgemmStridedBatched(char transa, char transb, long m,
              INT_MAX);
   }
 
-  adjustLdLevel3(transa, transb, m, n, k, &lda, &ldb, &ldc);
+  adjustLdLevel3(transa, transb, m, n, k, (int64_t *)&lda, (int64_t *)&ldb, (int64_t *)&ldc);
 
   gemm_switch_fp32accum(transa, transb, m, n, k, alpha, a, lda, strideA,
                         b, ldb, strideB, beta, c, ldc, strideC, batchCount);
