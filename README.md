@@ -150,6 +150,7 @@ A Python-only build omits:
 - Run the following:
 
 `set DISTUTILS_USE_SDK=1`
+
 `pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" --global-option="--distributed_adam" --global-option="--permutation_search" --global-option="--bnp" --global-option="--xentropy" --global-option="--focal_loss" --global-option="--index_mul_2d" --global-option="--deprecated_fused_adam" --global-option="--fast_layer_norm" --global-option="--fmha" --global-option="--fast_multihead_attn" --global-option="--transducer" --global-option="--cudnn_gbn" --global-option="--fused_conv_bias_relu" ./`
 
 
