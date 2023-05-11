@@ -324,7 +324,7 @@ __global__ void transducer_joint_tiled_forward(
                             // Apply ReLU here when relu is True
                             bool localMask = relu ? (out>0) : 1;
                             localMask = dropout ? localMask & dropoutMask[idx%U] : localMask;
-                            out = dropout ? out*((float)localMask)*scale : out*((float)localMask);
+                            out = dropout ? out*static_cast<float>(localMask)*scale : out*static_cast<float>(localMask);
                             myMask[i*strideF + j*hiddenSize + h] = static_cast<uint8_t>(localMask);
                         }
                         mySum[i*strideF + j*hiddenSize + h] = out;
