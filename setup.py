@@ -239,7 +239,7 @@ if "--cuda_ext" in sys.argv:
         CUDAExtension(
             name="fused_dense_cuda",
             sources=["csrc/fused_dense.cpp", "csrc/fused_dense_cuda.cu"],
-            libraries=['cublas'],
+            libraries=['cublas', 'cublasLt'],
             extra_compile_args={
                 "cxx": ["-O3"] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE'],
                 "nvcc": ["-O3"] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE'],
@@ -766,7 +766,7 @@ if "--fused_conv_bias_relu" in sys.argv:
                 sources=["apex/contrib/csrc/conv_bias_relu/conv_bias_relu.cpp"],
                 libraries=['cudnn'],
                 include_dirs=[os.path.join(this_dir, "apex/contrib/csrc/cudnn-frontend/include")],
-                extra_compile_args={"cxx": ["-O3"] + version_dependent_macros + generator_flag},
+                extra_compile_args={"cxx": ["-O3"] + version_dependent_macros + generator_flag + ['-DHAVE_SNPRINTF']},
             )
         )
 
