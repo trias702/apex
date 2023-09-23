@@ -129,12 +129,15 @@ CUDA and C++ extensions via
 ```bash
 git clone https://github.com/NVIDIA/apex
 cd apex
-pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./
+# if pip >= 23.1 (ref: https://pip.pypa.io/en/stable/news/#v23-1) which supports multiple `--config-settings` with the same key... 
+pip install -v --disable-pip-version-check --no-cache-dir --no-build-isolation --config-settings "--build-option=--cpp_ext" --config-settings "--build-option=--cuda_ext" ./
+# otherwise
+pip install -v --disable-pip-version-check --no-cache-dir --no-build-isolation --global-option="--cpp_ext" --global-option="--cuda_ext" ./
 ```
 
 APEX also supports a Python-only build via
 ```bash
-pip install -v --disable-pip-version-check --no-cache-dir ./
+pip install -v --disable-pip-version-check --no-build-isolation --no-cache-dir ./
 ```
 A Python-only build omits:
 - Fused kernels required to use `apex.optimizers.FusedAdam`.
@@ -151,7 +154,7 @@ A Python-only build omits:
 
 ```bash
 set DISTUTILS_USE_SDK=1
-pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" --global-option="--distributed_adam" --global-option="--permutation_search" --global-option="--bnp" --global-option="--xentropy" --global-option="--focal_loss" --global-option="--index_mul_2d" --global-option="--deprecated_fused_adam" --global-option="--fast_layer_norm" --global-option="--fmha" --global-option="--fast_multihead_attn" --global-option="--transducer" --global-option="--cudnn_gbn" --global-option="--fused_conv_bias_relu" ./
+pip install -v --disable-pip-version-check --no-cache-dir --no-build-isolation --config-settings "--build-option=--cpp_ext" --config-settings "--build-option=--cuda_ext" --config-settings "--build-option=--distributed_adam" --config-settings "--build-option=--permutation_search" --config-settings "--build-option=--bnp" --config-settings "--build-option=--xentropy" --config-settings "--build-option=--focal_loss" --config-settings "--build-option=--index_mul_2d" --config-settings "--build-option=--deprecated_fused_adam" --config-settings "--build-option=--fast_layer_norm" --config-settings "--build-option=--fmha" --config-settings "--build-option=--fast_multihead_attn" --config-settings "--build-option=--transducer" --config-settings "--build-option=--cudnn_gbn" --config-settings "--build-option=--fused_conv_bias_relu" .
 ```
 
 

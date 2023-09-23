@@ -1,13 +1,20 @@
 import sys
 import warnings
 import os
+import glob
 from packaging.version import parse, Version
 
 from setuptools import setup, find_packages
 import subprocess
 
 import torch
-from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtension, CUDA_HOME, load
+from torch.utils.cpp_extension import (
+    BuildExtension,
+    CppExtension,
+    CUDAExtension,
+    CUDA_HOME,
+    load,
+)
 
 # ninja build does not work unless include_dirs are abs path
 this_dir = os.path.dirname(os.path.abspath(__file__))
@@ -404,15 +411,18 @@ if "--bnp" in sys.argv:
     )
 
 if "--xentropy" in sys.argv:
+    from datetime import datetime
     sys.argv.remove("--xentropy")
     raise_if_cuda_home_none("--xentropy")
+    xentropy_ver = datetime.today().strftime("%y.%m.%d")
+    print(f"`--xentropy` setting version of {xentropy_ver}")
     ext_modules.append(
         CUDAExtension(
             name="xentropy_cuda",
             sources=["apex/contrib/csrc/xentropy/interface.cpp", "apex/contrib/csrc/xentropy/xentropy_kernel.cu"],
             include_dirs=[os.path.join(this_dir, "csrc")],
             extra_compile_args={
-                "cxx": ["-O3"] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE'],
+                "cxx": ["-O3"] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE'] + [f'-DXENTROPY_VER="{xentropy_ver}"'],
                 "nvcc": ["-O3"] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE'],
             },
         )
@@ -432,6 +442,34 @@ if "--focal_loss" in sys.argv:
             extra_compile_args={
                 'cxx': ['-O3'] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE'],
                 'nvcc':['-O3', '--use_fast_math', '--ftz=false'] + version_dependent_macros + ['-D_DISABLE_EXTENDED_ALIGNED_STORAGE'],
+            },
+        )
+    )
+
+if "--group_norm" in sys.argv:
+    sys.argv.remove("--group_norm")
+    raise_if_cuda_home_none("--group_norm")
+
+    # CUDA group norm supports from SM70
+    arch_flags = []
+    for arch in [70, 75, 80, 86, 90]:
+        arch_flag = f"-gencode=arch=compute_{arch},code=sm_{arch}"
+        arch_flags.append(arch_flag)
+    arch_flag = f"-gencode=arch=compute_90,code=compute_90"
+    arch_flags.append(arch_flag)
+
+    ext_modules.append(
+        CUDAExtension(
+            name="group_norm_cuda",
+            sources=[
+                "apex/contrib/csrc/group_norm/group_norm_nhwc_op.cpp",
+            ] + glob.glob("apex/contrib/csrc/group_norm/*.cu"),
+            include_dirs=[os.path.join(this_dir, 'csrc')],
+            extra_compile_args={
+                "cxx": ["-O3", "-std=c++17"] + version_dependent_macros,
+                "nvcc": [
+                    "-O3", "-std=c++17", "--use_fast_math", "--ftz=false",
+                ] + arch_flags + version_dependent_macros,
             },
         )
     )
@@ -777,7 +815,7 @@ setup(
     packages=find_packages(
         exclude=("build", "csrc", "include", "tests", "dist", "docs", "tests", "examples", "apex.egg-info",)
     ),
-    install_requires=["packaging>20.6",],
+    install_requires=["packaging>20.6"],
     description="PyTorch Extensions written by NVIDIA",
     ext_modules=ext_modules,
     cmdclass={"build_ext": BuildExtension} if ext_modules else {},

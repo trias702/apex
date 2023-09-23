@@ -33,7 +33,7 @@ at::Tensor linear_bias_forward(at::Tensor input, at::Tensor weight, at::Tensor b
   auto lt_workspace = at::empty({1 << 22}, input.type());
 
   using namespace at;
-  AT_DISPATCH_FLOATING_TYPES_AND2(at::ScalarType::Half, at::ScalarType::BFloat16, input.type(), "linear_bias_forward", [&] {
+  AT_DISPATCH_FLOATING_TYPES_AND2(at::ScalarType::Half, at::ScalarType::BFloat16, input.scalar_type(), "linear_bias_forward", [&] {
     scalar_t* w_ptr = weight.data_ptr<scalar_t>();
     scalar_t* b_ptr = bias.data_ptr<scalar_t>();
     auto result = linear_bias_forward_cuda<scalar_t>(
@@ -74,7 +74,7 @@ std::vector<at::Tensor> linear_bias_backward(at::Tensor input, at::Tensor weight
   auto lt_workspace = at::empty({1 << 22}, input.type());
 
   using namespace at;
-  AT_DISPATCH_FLOATING_TYPES_AND2(at::ScalarType::Half, at::ScalarType::BFloat16, input.type(), "linear_bias_backward", [&] {
+  AT_DISPATCH_FLOATING_TYPES_AND2(at::ScalarType::Half, at::ScalarType::BFloat16, input.scalar_type(), "linear_bias_backward", [&] {
     scalar_t* w_ptr = weight.data_ptr<scalar_t>();
     scalar_t* d_b_ptr = d_bias.data_ptr<scalar_t>();
     auto result = linear_bias_backward_cuda<scalar_t>(
@@ -113,7 +113,7 @@ std::vector<at::Tensor> linear_gelu_linear_forward(at::Tensor input, at::Tensor 
   auto lt_workspace = at::empty({1 << 22}, input.type());
 
   using namespace at;
-  AT_DISPATCH_FLOATING_TYPES_AND2(at::ScalarType::Half, at::ScalarType::BFloat16, input.type(), "linear_gelu_linear_forward", [&] {
+  AT_DISPATCH_FLOATING_TYPES_AND2(at::ScalarType::Half, at::ScalarType::BFloat16, input.scalar_type(), "linear_gelu_linear_forward", [&] {
     scalar_t* w1_ptr = weight1.data_ptr<scalar_t>();
     scalar_t* b1_ptr = bias1.data_ptr<scalar_t>();
     scalar_t* w2_ptr = weight2.data_ptr<scalar_t>();
@@ -160,7 +160,7 @@ std::vector<at::Tensor> linear_gelu_linear_backward(at::Tensor input, at::Tensor
   auto lt_workspace = at::empty({1 << 22}, input.type());
 
   using namespace at;
-  AT_DISPATCH_FLOATING_TYPES_AND2(at::ScalarType::Half, at::ScalarType::BFloat16, input.type(), "linear_bias_backward", [&] {
+  AT_DISPATCH_FLOATING_TYPES_AND2(at::ScalarType::Half, at::ScalarType::BFloat16, input.scalar_type(), "linear_bias_backward", [&] {
 
     //scalar_t* w_ptr = weight.data_ptr<scalar_t>();
     //scalar_t* d_b_ptr = d_bias.data_ptr<scalar_t>();
